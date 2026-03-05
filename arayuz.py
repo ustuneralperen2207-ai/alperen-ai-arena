@@ -25,30 +25,23 @@ st.markdown('<h1 class="main-title">🏢 OTONOM YAPAY ZEKA AJANSI</h1>', unsafe_
 # --- SOL MENÜ ---
 with st.sidebar:
     st.header("🔑 Ajans Yönetimi")
-    gemini_key = st.text_input("Gemini API (Sadece Baş Editör):", type="password")
-    groq_key = st.text_input("Groq API (Araştırmacı & Analist):", type="password")
+    gemini_key = st.text_input("Gemini API (Asıl Editör):", type="password")
+    groq_key = st.text_input("Groq API (Araştırmacı & Yedek):", type="password")
     
     st.divider()
-    st.info("💡 **Bilgi:** Sistem limitleri aşmamak için ağır araştırmaları Llama 3'e yaptırır, son düzenlemeyi Gemini'ye bırakır.")
+    st.info("💡 **Bilgi:** Sistemde 'Yedek Motor' devrededir. Google limitleri dolarsa, görev otomatik olarak Groq'a devredilir.")
 
 # --- İŞ EMRİ (GÖREV) ---
-gorev = st.text_area("🎯 Ajansa Verilecek İş Emri (Herhangi bir konu yazın):", value="İnsanlık Mars'a koloni kurduğunda, Dünya'daki ekonomi ve uluslararası ilişkiler bundan nasıl etkilenir?", height=90)
+gorev = st.text_area("🎯 Ajansa Verilecek İş Emri (Herhangi bir konu yazın):", value="Elektrikli araçların batarya ömrü sorunu nasıl çözülecek?", height=90)
 baslat = st.button("🚀 AJANSI ÇALIŞTIR", use_container_width=True)
 
-# Güvenli İstek Fonksiyonları
-def safe_gemini(client, prompt):
-    time.sleep(2) 
-    try:
-        return client.models.generate_content(model='gemini-2.5-flash', contents=prompt).text
-    except Exception as e:
-        return f"⚠️ Gemini Hatası (Kota dolmuş olabilir): {str(e)}"
-
+# Güvenli Llama Fonksiyonu
 def safe_groq(client, prompt):
     try:
         resp = client.chat.completions.create(messages=[{"role": "user", "content": prompt}], model='llama-3.3-70b-versatile')
         return resp.choices[0].message.content
     except Exception as e:
-        return f"⚠️ Groq Hatası: {str(e)}"
+        return f"⚠️ Llama Hatası: {str(e)}"
 
 if baslat:
     g_key_clean = gemini_key.strip() if gemini_key else ""
@@ -64,28 +57,38 @@ if baslat:
 
         col_a, col_b = st.columns(2)
         
-        # 1. AŞAMA: ARAŞTIRMA (ARTIK GROQ/LLAMA YAPIYOR)
+        # 1. AŞAMA: ARAŞTIRMA (GROQ)
         with col_a:
             st.markdown("### 🔍 1. Araştırmacı (Llama 3)")
             with st.spinner("İnternet ve veri tabanları taranıyor..."):
-                prompt1 = f"Sen kıdemli bir araştırmacısın. Görev: '{gorev}'. Bu konu hakkında derinlemesine bir araştırma yap. Önemli gerçekleri, verileri ve dinamikleri topla. Yorum katmadan objektif verileri listele."
+                prompt1 = f"Sen kıdemli bir araştırmacısın. Görev: '{gorev}'. Bu konu hakkında derinlemesine bir araştırma yap. Önemli gerçekleri ve verileri listele."
                 arastirma_notu = safe_groq(gr_client, prompt1)
                 st.markdown(f'<div class="agent-card">{arastirma_notu}</div>', unsafe_allow_html=True)
                 
-        # 2. AŞAMA: ANALİZ VE ELEŞTİRİ (YİNE GROQ/LLAMA)
+        # 2. AŞAMA: ANALİZ VE ELEŞTİRİ (GROQ)
         with col_b:
             st.markdown("### 🧠 2. Eleştirel Analist (Llama 3)")
             with st.spinner("Araştırma verileri denetleniyor..."):
-                prompt2 = f"Sen eleştirel bir stratejistsin. Görev: '{gorev}'. Araştırmacının topladığı veriler şunlar: '{arastirma_notu}'. Bu verilerdeki eksikleri bul, farklı bakış açıları ekle ve konuyu derinleştir."
+                prompt2 = f"Sen eleştirel bir stratejistsin. Görev: '{gorev}'. Araştırma verileri: '{arastirma_notu}'. Bu verilerdeki eksikleri bul, farklı bakış açıları ekle."
                 analiz_notu = safe_groq(gr_client, prompt2)
                 st.markdown(f'<div class="agent-card">{analiz_notu}</div>', unsafe_allow_html=True)
 
-        # 3. AŞAMA: NİHAİ YAZIM (DEĞERLİ GEMINI KOTAMIZ BURAYA SAKLANDI)
+        # 3. AŞAMA: NİHAİ YAZIM (OTOMATİK YEDEKLEMELİ)
         st.divider()
-        st.markdown("### ✍️ 3. Baş Editör (Gemini - Nihai Rapor)")
-        with st.spinner("Tüm veriler harmanlanıp makale yazılıyor... (Lütfen bekleyin)"):
-            prompt3 = f"Sen uzman bir baş yazar ve editörsün. Görev: '{gorev}'.\n\nAraştırmacının Notları: {arastirma_notu}\n\nAnalistin Eklemeleri: {analiz_notu}\n\nBu iki veriyi harmanla. Alt başlıklar, profesyonel bir giriş ve etkili bir sonuç bölümü kullanarak harika bir makale/rapor yaz. Metin akıcı ve ikna edici olmalı."
-            nihai_makale = safe_gemini(g_client, prompt3)
+        st.markdown("### ✍️ 3. Baş Editör (Nihai Rapor)")
+        with st.spinner("Tüm veriler harmanlanıp makale yazılıyor..."):
+            prompt3 = f"Sen uzman bir baş yazar ve editörsün. Görev: '{gorev}'.\n\nAraştırmacının Notları: {arastirma_notu}\n\nAnalistin Eklemeleri: {analiz_notu}\n\nBu iki veriyi harmanla. Alt başlıklar, giriş ve sonuç kullanarak harika bir makale yaz."
+            
+            # --- YEDEK MOTOR SİSTEMİ (FAIL-SAFE) ---
+            try:
+                # Önce Gemini'yi dener
+                time.sleep(2)
+                nihai_makale = g_client.models.generate_content(model='gemini-2.5-flash', contents=prompt3).text
+                st.success("✨ Baş Editör (Gemini) makaleyi başarıyla tamamladı!")
+            except Exception as e:
+                # Gemini hata verirse (429 vb.) Anında Llama devreye girer
+                st.warning("⚠️ Gemini şu an kotadan dolayı dinleniyor. Görevi anında Yedek Editör (Llama 3) devraldı!")
+                nihai_makale = safe_groq(gr_client, prompt3)
             
             st.markdown(f'<div class="article-panel">{nihai_makale}</div>', unsafe_allow_html=True)
             
