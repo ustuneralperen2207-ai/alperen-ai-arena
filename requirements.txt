@@ -1,3 +1,6 @@
 streamlit
 google-genai
 groq
+beautifulsoup4
+requests
+
